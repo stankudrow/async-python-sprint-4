@@ -1,0 +1,37 @@
+#version: "3"  # deprecated
+
+services:
+  postgres:
+    image: postgres:14
+    # env_file:
+    #   - ./.env  # by default
+    environment:
+      POSTGRES_DB: ${S4_POSTGRES_DATABASE}
+      POSTGRES_USER: ${S4_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${S4_POSTGRES_PASSWORD}
+    ports:
+      - ${S4_POSTGRES_PORT:-5432}:5432
+    # https://stackoverflow.com/questions/70205657/postgres-docker-role-root-does-not-exist
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  # app:
+  #   build:
+  #     context: .
+  #   image: sh_url
+  #   depends_on:
+  #     - postgres
+
+# `docker compose down` saves the volume and data
+# otherwise, add `--volumes` option
+volumes:
+  pgdata:
