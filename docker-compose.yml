@@ -24,12 +24,12 @@ services:
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data
-  # app:
-  #   build:
-  #     context: .
-  #   image: sh_url
-  #   depends_on:
-  #     - postgres
+  app:
+    build:
+      context: .
+    image: sh_url
+    depends_on:
+      - postgres
 
 # `docker compose down` saves the volume and data
 # otherwise, add `--volumes` option
