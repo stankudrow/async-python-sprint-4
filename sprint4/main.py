@@ -1,22 +1,27 @@
-from os import getenv
-from uvicorn import run as run_asgi
+import asyncio
 
 import click
-from dotenv import find_dotenv, load_dotenv
+import uvloop
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
+from uvicorn import run as run_asgi
 
-from sprint4.api.internal import INTERNAL_ROUTER
+from sprint4.api.rest import INTERNAL_ROUTER, URIS_ROUTER
+from sprint4.core.settings import SETTINGS
+
+# setting uvloop instead of asyncio default one
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-load_dotenv(find_dotenv())
-
-
-app = FastAPI()
+app = FastAPI(
+    title=SETTINGS.title,
+    summary=SETTINGS.summary,
+    description=SETTINGS.description,
+    version=SETTINGS.version,
+    default_response_class=ORJSONResponse,
+)
 app.include_router(INTERNAL_ROUTER)
-
-
-APP_HOST = getenv("S4_SERVER_HOST")
-APP_PORT = int(getenv("S4_SERVER_PORT"))
+app.include_router(URIS_ROUTER)
 
 
 @click.command()
@@ -24,7 +29,7 @@ APP_PORT = int(getenv("S4_SERVER_PORT"))
     "-h",
     "--host",
     type=click.STRING,
-    default=APP_HOST,
+    default=SETTINGS.server.host,
     show_default=True,
     help="application host",
 )
@@ -32,7 +37,7 @@ APP_PORT = int(getenv("S4_SERVER_PORT"))
     "-p",
     "--port",
     type=click.INT,
-    default=APP_PORT,
+    default=SETTINGS.server.port,
     show_default=True,
     help="application port",
 )

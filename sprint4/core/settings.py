@@ -2,10 +2,12 @@
 
 from pathlib import Path
 from os import getenv
+from typing import Callable
 
+import orjson
 import tomli
 from dotenv import find_dotenv, load_dotenv
-from pydantic import Field, PostgresDsn
+from pydantic import BaseModel, Field, PostgresDsn
 from pydantic_settings import BaseSettings
 
 
@@ -20,10 +22,12 @@ PG_PORT = getenv("S4_POSTGRES_PORT", 5432)
 PG_DB = getenv("S4_POSTGRES_DATABASE", "postgres")
 
 
-# the `pyproject-parser` package seemed disappointing for me
+# The `pyproject-parser` package seemed disappointing for me.
+# So parsing the `pyproject.toml` "manually".
 with open(Path(__file__).parent.parent.parent / "pyproject.toml", mode="rb") as pyprof:
     _PyProject: dict = tomli.load(pyprof)
-    _PyProjectMeta: dict = _PyProject["tool"]["poetry"]
+    _MainSection: dict = _PyProject["tool"]["poetry"]
+    _AppMetaSection: dict = _PyProject["tool"]["app_meta"]
 
 
 class ServerSettings(BaseSettings):
@@ -33,6 +37,21 @@ class ServerSettings(BaseSettings):
 
     host: str = Field(validation_alias="s4_server_host", default=_LOCALHOST)
     port: int = Field(validation_alias="s4_server_port", default=8080)
+
+
+class PostgresEngineConfig(BaseModel):
+    echo: bool = True
+    echo_pool: bool = True
+    hide_parameters: bool = True
+    json_deserializer: Callable = orjson.loads
+    json_serializer: Callable = orjson.dumps
+    pool_pre_ping: bool = True
+
+
+class PostgresSessionConfig(BaseModel):
+    autobegin: bool = False
+    autoflush: bool = True
+    expire_on_commit: bool = False
 
 
 class PostgresSettings(BaseSettings):
@@ -48,13 +67,15 @@ class PostgresSettings(BaseSettings):
         f"@{PG_HOST}:{PG_PORT}"
         f"/{PG_DB}"
     )
+    engine_settings: PostgresEngineConfig = PostgresEngineConfig()
+    session_settings: PostgresSessionConfig = PostgresSessionConfig()
 
 
 class Settings(BaseSettings):
-    title: str = _PyProjectMeta.get("title", "App Title")
-    version: str = _PyProjectMeta.get("version", "App Version")
-    summary: str = _PyProjectMeta.get("summary", "App Summary")
-    description: str = _PyProjectMeta.get("description", "App Description")
+    title: str = _AppMetaSection.get("title", "App Title")
+    version: str = _MainSection.get("version", "App Version")
+    summary: str = _AppMetaSection.get("summary", "App Summary")
+    description: str = _MainSection.get("description", "App Description")
 
     server: ServerSettings = ServerSettings()
     postgres: PostgresSettings = PostgresSettings()
