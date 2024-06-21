@@ -23,13 +23,16 @@ services:
       start_period: 10s
     restart: unless-stopped
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/sprint4
   app:
     build:
       context: .
     image: sh_url
     depends_on:
       - postgres
+    network_mode: host
+    ports:
+      - ${S4_SERVER_PORT}:${S4_SERVER_PORT}
 
 # `docker compose down` saves the volume and data
 # otherwise, add `--volumes` option
