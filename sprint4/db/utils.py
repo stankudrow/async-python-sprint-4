@@ -1,3 +1,5 @@
+"""Database utils module."""
+
 from sqlalchemy.ext.asyncio.engine import AsyncEngine, create_async_engine
 from sqlalchemy.ext.asyncio.session import AsyncSession, async_sessionmaker
 
