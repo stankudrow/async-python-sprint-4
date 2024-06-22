@@ -1,15 +1,15 @@
 [tool.poetry]
 name = "sprint4"
 version = "0.1.0"
-description = "Makes URIs short to type them not for long."
+description = "Makes URLs short to type them not for long."
 authors = ["Stanley Kudrow <stankudrow@noreply.com>"]
 readme = "README.md"
 include = ["pyproject.toml"]  # for /core/settings.py
 
 # for /core/settings.py
 [tool.app_meta]
-title = "Sprint4 URI Shortener"
-summary = "Shortens URIs for good"
+title = "Sprint4 URL Shortener"
+summary = "Shortens URLs for good"
 
 [tool.poetry.dependencies]
 python = ">=3.9"
@@ -25,6 +25,7 @@ pydantic = "^2.7.4"
 pydantic-settings = "^2.3.3"
 orjson = "^3.10.5"
 tomli = "^2.0.1"  # for /core/settings.py
+pyshorteners = "^1.0.1"
 
 [tool.poetry.group.dev.dependencies]
 bandit = "^1.7.8"
