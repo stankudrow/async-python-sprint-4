@@ -2,26 +2,16 @@ import asyncio
 
 import click
 import uvloop
-from fastapi import FastAPI
-from fastapi.responses import ORJSONResponse
 from uvicorn import run as run_asgi
 
-from sprint4.api.rest import INTERNAL_ROUTER, URIS_ROUTER
 from sprint4.core.settings import SETTINGS
+from sprint4.api.rest.app import APP
 
 # setting uvloop instead of asyncio default one
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-app = FastAPI(
-    title=SETTINGS.title,
-    summary=SETTINGS.summary,
-    description=SETTINGS.description,
-    version=SETTINGS.version,
-    default_response_class=ORJSONResponse,
-)
-app.include_router(INTERNAL_ROUTER)
-app.include_router(URIS_ROUTER)
+app = APP
 
 
 @click.command()
