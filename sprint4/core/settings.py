@@ -7,7 +7,7 @@ from typing import Callable
 import orjson
 import tomli
 from dotenv import find_dotenv, load_dotenv
-from pydantic import BaseModel, Field, PostgresDsn
+from pydantic import BaseModel, Field, PostgresDsn, field_serializer
 from pydantic_settings import BaseSettings
 
 
@@ -61,7 +61,7 @@ class PostgresSettings(BaseSettings):
     This file is meant to be `.env`, containing variables with `S4_` prefix.
     """
 
-    url: PostgresDsn = (
+    dsn: PostgresDsn = (
         f"postgresql+asyncpg://"
         f"{PG_USER}:{PG_PWD}"
         f"@{PG_HOST}:{PG_PORT}"
@@ -69,6 +69,10 @@ class PostgresSettings(BaseSettings):
     )
     engine_settings: PostgresEngineConfig = PostgresEngineConfig()
     session_settings: PostgresSessionConfig = PostgresSessionConfig()
+
+    @field_serializer("dsn")
+    def serialise_dsn(self, dsn, _info) -> str:
+        return str(dsn)
 
 
 class Settings(BaseSettings):
