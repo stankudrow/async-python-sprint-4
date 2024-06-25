@@ -1,7 +1,9 @@
 """Database repositories module."""
 
+from datetime import datetime
+
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql import delete, insert, select, text, Delete, Select
+from sqlalchemy.sql import delete, insert, select, text, update, Delete, Select, Update
 
 from sprint4.core.exceptions import UrlRepositoryError
 from sprint4.core.ptypes import KeywordsType, SettingsType
@@ -11,7 +13,7 @@ from sprint4.db.utils import get_async_engine, get_async_session
 from sprint4.models.urls import HttpUrlModel, HttpUrlRow, HttpUrlFilter
 
 
-_FilterableQueryType = Delete | Select
+_FilterableQueryType = Delete | Select | Update
 
 
 def _get_conditioned_query_from_url_filter(
@@ -27,6 +29,10 @@ def _get_conditioned_query_from_url_filter(
         query = query.where(Url.is_gone == url_filter.is_gone)
     if url_filter.visibility:
         query = query.where(Url.visibility == url_filter.visibility)
+    if url_filter.client_info:
+        query = query.where(Url.client_info == url_filter.client_info)
+    if url_filter.clicked_at:
+        query = query.where(Url.clicked_at == url_filter.clicked_at)
     return query
 
 
@@ -133,84 +139,86 @@ class UrlRepository:
             )
             async with session.begin():
                 result = await session.execute(query)
-                # TODO: update UrlHistory
             return [HttpUrlRow.model_validate(row[0]) for row in result.fetchall()]
 
-    async def delete_urls(self, url_filters: list[HttpUrlFilter]) -> list[HttpUrlRow]:
-        """Delete the urls by their filters.
+    async def delete_url(self, url_filter: HttpUrlFilter) -> HttpUrlRow:
+        """Delete the url by the filter.
 
         Args:
-            url_filters: list[HttpUrlFilter]- the fields for the WHERE clause
+            url_filter: HttpUrlFilter - the fields for the WHERE clause
 
         Returns:
-            list[HttpUrlRow] - the deleted rows
+            HttpUrlRow - the deleted row
         """
 
         async with self._session() as session:
             query = delete(Url)
-            for url_filter in url_filters:
-                query = _get_conditioned_query_from_url_filter(
-                    query=query, url_filter=url_filter
-                )
+            query = _get_conditioned_query_from_url_filter(
+                query=query, url_filter=url_filter
+            )
+            query = query.returning(Url)
+            async with session.begin():
+                response = await session.execute(query)
+                return HttpUrlRow.model_validate(response.one())
+
+    async def mark_url_gone(self, url_filter: HttpUrlFilter) -> HttpUrlRow:
+        """Mark the URL gone.
+
+        If a URL is marked as "gone", i.e. the field `is_gone` set True,
+        the record remains in the database, but considered to be deleted.
+
+        Args:
+            url_filter: HttpUrlFilter - a filter for a URL to be marked "Gone"
+
+        Raises:
+            UrlRepositoryError - if the given urls cannot be marked "Gone"
+
+        Returns:
+            HttpUrlRow - the affected record model
+        """
+
+        async with self._session() as session:
+            query = update(Url)
+            query = _get_conditioned_query_from_url_filter(query, url_filter=url_filter)
+            query = query.values(is_gone=True)
             query = query.returning(Url)
             async with session.begin():
                 result = await session.execute(query)
-                return [HttpUrlRow.model_validate(row[0]) for row in result]
+                row = result.one()[0]
+                return HttpUrlRow.model_validate(row)
 
-    # async def mark_urls_gone(self, urls: list[HttpUrlModel]) -> list[HttpUrlRow]:
-    #     """Mark URLs gone.
+    async def click_url(self, url_filter: HttpUrlFilter) -> HttpUrlRow:
+        """Click the given URL.
 
-    #     If a URL is marked as "gone", i.e. the field `is_gone` set True,
-    #     the record remains in the database, but considered to be deleted.
+        When a URL is clicked URL, the following attributes are set:
+        * client_info -> the information about the client (if found)
+        * clicked_at -> the datetime of the click on the URL (if found)
 
-    #     Args:
-    #         urls: list[HttpUrlModel] - URLs to be marked "Gone"
+        It is like a URL being clicked, redirected to and so forth.
 
-    #     Raises:
-    #         UrlRepositoryError - if the given urls cannot be marked "Gone"
+        Args:
+            url_filter: HttpUrlFilter - a URL to be visited
 
-    #     Returns:
-    #         list[HttpUrlRow] - the affected record models
-    #     """
+        Raises:
+            UrlRepositoryError - the client information is not set.
 
-    #     async with self._session() as session:
-    #         query = update(Url).returning(Url)
-    #         async with session.begin():
-    #             params = self._get_params_from_url_models(urls)
-    #             if not (rows := await self.get_urls(params=params)):
-    #                 raise UrlRepositoryError("no rows to mark as 'Gone'")
-    #             new_rows: list[KeywordsType] = []
-    #             while rows:
-    #                 row: Url = rows.pop()
-    #                 new_row = row.to_dict()
-    #                 new_row["is_gone"] = True
-    #                 new_rows.append(new_row)
-    #             results = await session.execute(query, new_rows)
-    #             return [HttpUrlRow.model_validate(row[0]) for row in results.fetchall()]
+        Returns:
+            HttpUrlRow - the affected record model
+        """
 
-    # async def mark_urls_visited(self, urls: list[HttpUrlModel]) -> list[HttpUrlRow]:
-    #     """Mark URLs visited.
-
-    #     It is like a URL being clicked, redirected to and so forth.
-
-    #     Args:
-    #         urls: list[HttpUrlModel] - URLs to be marked "Visited"
-
-    #     Returns:
-    #         list[HttpUrlRow] - the affected record models
-    #     """
-
-    #     async with self._session() as session:
-    #         query = update(Url).returning(Url)
-    #         async with session.begin():
-    #             params = self._get_params_from_url_models(urls)
-    #             if not (rows := await self.get_urls(params=params)):
-    #                 raise UrlRepositoryError("no rows to mark as 'Gone'")
-    #             new_rows: list[KeywordsType] = []
-    #             while rows:
-    #                 row: Url = rows.pop()
-    #                 new_row = row.to_dict()
-    #                 new_row["is_gone"] = True
-    #                 new_rows.append(new_row)
-    #             results = await session.execute(query, new_rows)
-    #             return [HttpUrlRow.model_validate(row[0]) for row in results.fetchall()]
+        if not url_filter.client_info:
+            msg = "the client information is not set"
+            raise UrlRepositoryError(msg)
+        url_filter.clicked_at = datetime.now()
+        async with self._session() as session:
+            ci, cat = url_filter.client_info, url_filter.clicked_at
+            url_filter.client_info, url_filter.clicked_at = None, None
+            query = update(Url)
+            query = _get_conditioned_query_from_url_filter(query, url_filter=url_filter)
+            query = query.values(client_info=ci)
+            query = query.values(clicked_at=cat)
+            query = query.returning(Url)
+            async with session.begin():
+                result = await session.execute(query)
+                row = result.one()[0]
+                return HttpUrlRow.model_validate(row)

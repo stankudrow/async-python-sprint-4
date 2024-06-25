@@ -38,9 +38,18 @@ class UrlShortenerService:
             url = request.url
             urls.append(HttpUrlModel(url=url, short_url=sh.shorten(url)))
         try:
-            return await self._repo.add_urls(urls)
+            return await self._repo.add_urls(url_models=urls)
         except UrlRepositoryError as e:
             raise UrlServiceError(str(e)) from e
 
+    async def click_url(self, url_filter: HttpUrlFilter) -> HttpUrlRow:
+        return await self._repo.click_url(url_filter=url_filter)
+
+    async def delete_url(self, url_filter: HttpUrlFilter) -> HttpUrlRow:
+        return await self._repo.delete_url(url_filter=url_filter)
+
     async def get_url_stats(self, url_filter: HttpUrlFilter) -> list[HttpUrlRow]:
-        return await self._repo.get_urls(url_filter)
+        return await self._repo.get_urls(url_filter=url_filter)
+
+    async def mark_url_gone(self, url_filter: HttpUrlFilter) -> HttpUrlRow:
+        return await self._repo.mark_url_gone(url_filter=url_filter)

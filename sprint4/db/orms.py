@@ -1,6 +1,6 @@
 """Database ORMs module."""
 
-# from datetime import datetime
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -23,6 +23,8 @@ class Url(Base):
     visibility: Mapped[UrlVisibilityTypes] = mapped_column(
         default=UrlVisibilityTypes.public, nullable=False
     )
+    client_info: Mapped[None | str] = mapped_column(Text)
+    clicked_at: Mapped[None | datetime]
 
     def __repr__(self) -> str:
         cls_name = self.__class__.__name__
@@ -33,10 +35,3 @@ class Url(Base):
         return {
             column.name: getattr(self, column.name) for column in self.__table__.columns
         }
-
-
-# class UrlHistory(Base):
-#     id: Mapped[int] = mapped_column(primary_key=True)
-#     url_id: Mapped[int] = mapped_column(nullable=False)
-#     visited_at: Mapped[datetime] = mapped_column(nullable=False)
-#     client_info: Mapped[str] = mapped_column(Text, nullable=False)

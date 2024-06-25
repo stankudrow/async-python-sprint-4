@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, NonNegativeInt, field_serializer
@@ -36,6 +37,8 @@ class HttpUrlRow(HttpUrlModel):
 
     id: NonNegativeInt
     is_gone: bool = False
+    client_info: None | str
+    clicked_at: None | datetime
 
 
 class HttpUrlFilter(BaseModel):
@@ -46,6 +49,8 @@ class HttpUrlFilter(BaseModel):
     short_url: None | AnyHttpUrl = None
     is_gone: None | bool = None
     visibility: None | UrlVisibilityTypes = None
+    client_info: None | str = None
+    clicked_at: None | datetime = None
 
     @field_serializer("url")
     def serialize_url(self, url: AnyHttpUrl, _info) -> None | str:

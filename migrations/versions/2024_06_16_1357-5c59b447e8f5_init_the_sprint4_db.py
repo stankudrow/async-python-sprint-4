@@ -64,6 +64,18 @@ def upgrade() -> None:
             nullable=False,
             comment="The kind of URL by visibility: public, private, etc.",
         ),
+        sa.Column(
+            "client_info",
+            sa.Text,
+            nullable=True,
+            comment="The information of the last client that clicked a URL.",
+        ),
+        sa.Column(
+            "clicked_at",
+            sa.DateTime,
+            nullable=True,
+            comment="The datetime of the last clicked for a URL.",
+        ),
     )
     op.create_index(
         index_name=SHORT_URL_INDEX,
