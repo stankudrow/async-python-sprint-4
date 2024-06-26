@@ -1,0 +1,52 @@
+#version: "3"  # deprecated
+
+services:
+  s4_db:
+    image: postgres:14
+    container_name: s4_postgres
+    # env_file: ".env"  # by default
+    environment:
+      POSTGRES_DB: ${S4_POSTGRES_DATABASE}
+      POSTGRES_USER: ${S4_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${S4_POSTGRES_PASSWORD}
+    ports:
+      - ${S4_POSTGRES_PORT:-5432}:5432
+    # https://stackoverflow.com/questions/70205657/postgres-docker-role-root-does-not-exist
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - s4_net
+    volumes:
+      - pgdata:/var/lib/postgresql/sprint4
+
+  # s4_app:
+  #   build:
+  #     context: .
+  #   container_name: s4_url_shortener
+  #   image: s4_url_shortener_service
+  #   depends_on:
+  #     s4_db:
+  #       condition: service_healthy
+  #   links:
+  #     - s4_db
+  #   networks:
+  #     - s4_net
+  #   ports:
+  #     - ${S4_SERVER_PORT}:${S4_SERVER_PORT}
+  #   command: "alembic upgrade head && uvicorn sprint4.main:app --reload --host 0.0.0.0 --port 8080"
+
+# `docker compose down` saves the volume and data
+# otherwise, add `--volumes` option
+volumes:
+  pgdata:
+networks:
+  s4_net:
+    driver: bridge
