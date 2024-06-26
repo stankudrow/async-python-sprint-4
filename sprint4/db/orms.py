@@ -25,6 +25,7 @@ class Url(Base):
     )
     client_info: Mapped[None | str] = mapped_column(Text)
     clicked_at: Mapped[None | datetime]
+    nclicks: Mapped[int] = mapped_column(default=0)
 
     def __repr__(self) -> str:
         cls_name = self.__class__.__name__

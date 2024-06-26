@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql import delete, insert, select, text, update, Delete, Select, Update
 
 from sprint4.core.exceptions import UrlRepositoryError
@@ -33,6 +33,8 @@ def _get_conditioned_query_from_url_filter(
         query = query.where(Url.client_info == url_filter.client_info)
     if url_filter.clicked_at:
         query = query.where(Url.clicked_at == url_filter.clicked_at)
+    if url_filter.nclicks is not None:
+        query = query.where(Url.nclicks == url_filter.nclicks)
     return query
 
 
@@ -211,12 +213,23 @@ class UrlRepository:
             raise UrlRepositoryError(msg)
         url_filter.clicked_at = datetime.now()
         async with self._session() as session:
-            ci, cat = url_filter.client_info, url_filter.clicked_at
-            url_filter.client_info, url_filter.clicked_at = None, None
+            ci = url_filter.client_info
+            cat = url_filter.clicked_at
+            # removing filter for query preparation
+            url_filter.client_info = None
+            url_filter.clicked_at = None
+            result = await self.get_urls(url_filter=url_filter)
+            if not result or len(result) != 1:
+                msg = f"No result for the filter:\n{url_filter.model_dump()}"
+                raise NoResultFound(msg)
+            row = result[0]
+            nclicks = row.nclicks + 1
+            # preapre update query
             query = update(Url)
             query = _get_conditioned_query_from_url_filter(query, url_filter=url_filter)
             query = query.values(client_info=ci)
             query = query.values(clicked_at=cat)
+            query = query.values(nclicks=nclicks)
             query = query.returning(Url)
             async with session.begin():
                 result = await session.execute(query)

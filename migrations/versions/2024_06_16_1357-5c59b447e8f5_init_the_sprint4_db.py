@@ -76,6 +76,19 @@ def upgrade() -> None:
             nullable=True,
             comment="The datetime of the last clicked for a URL.",
         ),
+        sa.Column(
+            "nclicks",
+            sa.Integer,
+            nullable=False,
+            default=0,
+            server_default="0",
+            comment="The number of clicks on a URL",
+        ),
+    )
+    op.create_check_constraint(
+        "ck_non_negative_clicks",
+        URLS_TABLE,
+        sa.sql.column("nclicks") > -1,
     )
     op.create_index(
         index_name=SHORT_URL_INDEX,

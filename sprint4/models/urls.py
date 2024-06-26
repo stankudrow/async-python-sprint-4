@@ -39,6 +39,7 @@ class HttpUrlRow(HttpUrlModel):
     is_gone: bool = False
     client_info: None | str
     clicked_at: None | datetime
+    nclicks: NonNegativeInt
 
 
 class HttpUrlFilter(BaseModel):
@@ -51,6 +52,7 @@ class HttpUrlFilter(BaseModel):
     visibility: None | UrlVisibilityTypes = None
     client_info: None | str = None
     clicked_at: None | datetime = None
+    nclicks: None | int = None
 
     @field_serializer("url")
     def serialize_url(self, url: AnyHttpUrl, _info) -> None | str:

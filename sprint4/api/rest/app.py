@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Request
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import ORJSONResponse
 from pydantic import ValidationError
 from sqlalchemy.exc import DataError, DatabaseError, NoResultFound
 
+from sprint4.api.rest import BLACKLIST_IPS
 from sprint4.api.rest.routes import INTERNAL_ROUTER, URLS_ROUTER, URL_STATUSES_ROUTER
 from sprint4.core.settings import SETTINGS
 
@@ -18,9 +18,6 @@ APP = FastAPI(
 APP.include_router(INTERNAL_ROUTER)
 APP.include_router(URLS_ROUTER)
 APP.include_router(URL_STATUSES_ROUTER)
-
-# too lazy to add the advanced middleware support and design
-APP.add_middleware(TrustedHostMiddleware, allowed_hosts=["*.example.com"])
 
 
 @APP.exception_handler(ValidationError)
@@ -53,3 +50,12 @@ async def handle_database_error(
     exc: DatabaseError,
 ):
     return ORJSONResponse(status_code=418, content={"msg": f"DatabaseError: {exc}"})
+
+
+@APP.middleware("http")
+async def filter_hosts(request: Request, call_next):
+    ip, _ = request.get("client")
+    if ip in BLACKLIST_IPS:
+        msg = f"the IP={ip} is in the black list"
+        return ORJSONResponse(content=msg, status_code=400)
+    return await call_next(request)

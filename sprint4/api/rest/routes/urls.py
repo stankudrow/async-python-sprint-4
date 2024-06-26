@@ -1,3 +1,4 @@
+
 from fastapi.exceptions import HTTPException
 from fastapi.requests import Request
 from fastapi.responses import ORJSONResponse
@@ -19,6 +20,13 @@ def _assign_client_data_from_headers(
     client_info = f"<address={ip_addr}:{port};user-agent={user_agent}>"
     url_filter.client_info = client_info
     return url_filter
+
+
+def _get_redirected_response(row: HttpUrlRow) -> ORJSONResponse:
+    content = row.model_dump()
+    return ORJSONResponse(
+        content=content, status_code=307, headers={"Location": content["url"]}
+    )
 
 
 @URLS_ROUTER.post(
@@ -102,7 +110,8 @@ async def click_url_by_id(request: Request, url_id: int) -> HttpUrlRow:
     url_filter = _assign_client_data_from_headers(
         request=request, url_filter=url_filter
     )
-    return await URL_SHORTENER_SERVICE.click_url(url_filter=url_filter)
+    row = await URL_SHORTENER_SERVICE.click_url(url_filter=url_filter)
+    return _get_redirected_response(row)
 
 
 @URLS_ROUTER.get(
@@ -115,7 +124,9 @@ async def click_url_by_short_url(request: Request, short_url: str) -> HttpUrlRow
     url_filter = _assign_client_data_from_headers(
         request=request, url_filter=url_filter
     )
-    return await URL_SHORTENER_SERVICE.click_url(url_filter=url_filter)
+    row = await URL_SHORTENER_SERVICE.click_url(url_filter=url_filter)
+    print(f"ROW = {row}")
+    return _get_redirected_response(row)
 
 
 @URLS_ROUTER.get(
@@ -128,4 +139,5 @@ async def click_url_by_url(request: Request, url: str) -> HttpUrlRow:
     url_filter = _assign_client_data_from_headers(
         request=request, url_filter=url_filter
     )
-    return await URL_SHORTENER_SERVICE.click_url(url_filter=url_filter)
+    row = await URL_SHORTENER_SERVICE.click_url(url_filter=url_filter)
+    return _get_redirected_response(row)
